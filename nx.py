@@ -18,15 +18,25 @@ def create_adjlist():
             f.write("\n")
     f.close()
 
-def draw_graph():
+def draw_graph_G(name):
     graph_pos = nx.spring_layout(G)
     # draw nodes, edges and labels
     nx.draw_networkx_nodes(G, graph_pos, node_size=250  , node_color='blue', alpha=0.15)
     nx.draw_networkx_edges(G, graph_pos, edge_color='red')
     nx.draw_networkx_labels(G, graph_pos, font_size=10, font_family='sans-serif', font_color='black')
-    #plt.savefig("graph.png")
-    # show graph
-    plt.show()
+    plt.savefig("graphs/"+name+".png")
+    plt.clf()
+
+def draw_graph_my_graph(name):
+    graph_pos = nx.spring_layout(my_graph)
+    # draw nodes, edges and labels
+    nx.draw_networkx_nodes(my_graph, graph_pos, node_size=250  , node_color='blue', alpha=0.15)
+    nx.draw_networkx_edges(my_graph, graph_pos, edge_color='red')
+    nx.draw_networkx_labels(my_graph, graph_pos, font_size=10, font_family='sans-serif', font_color='black')
+    plt.savefig("graphs/"+name+".png")
+    plt.clf()
+    #show graph
+    #plt.show()
 
 def calculate_power():
     bet_cen = nx.betweenness_centrality(G)
@@ -44,7 +54,7 @@ def highest_centrality(cent_dict):
     return tuple(reversed(cent_items[0]))
 
 def link_prediction():
-    india = 6
+    global india
     leng = 20
     for col in range(0,leng):
         if col == india:
@@ -59,7 +69,7 @@ def link_prediction():
             df.iloc[col,india]=0
 
 def find_new_powers(india, col):
-    global G,max_cen,country
+    global G,my_graph,max_cen,country
     create_adjlist()
     fh=open("myfile.adjlist", 'rb')
     G=nx.read_adjlist(fh)
@@ -70,9 +80,10 @@ def find_new_powers(india, col):
     #print(str(powers[0])+"\n"+str(powers[1])+"\n"+str(powers[2])+"\n")
     ind_cen = indian_power()
     avg_cen = (ind_cen[0]+ind_cen[1]+ind_cen[2])/3
-    if avg_cen > max_cen:
+    if avg_cen >= max_cen:
         max_cen = avg_cen
         country = col
+        my_graph = G
         a["new_max_centralities"] = powers
         a["new_indian_centralities"] = ind_cen
 
@@ -87,18 +98,20 @@ def indian_power():
     return (bet_cen, clo_cen, eig_cen)
 
 def print_link():
-    print("\nOriginal_max_centralities:\n"+str(a["original_max_centralities"]))
-    print("\nOriginal_indian_centralities:\n"+str(a["original_indian_centralities"]))
-
     if country == -1:
-        print("\n
-        No such country found!")
+        print("\nNo such country found!")
     else:
         a["link"] = df.columns[country]
-        print("\nThe country with whom, India would get maximum increase in its centrality is: "+a["link"])
-        print("\nNew Indian centralities:\n"+str(a["new_indian_centralities"]))
-        print("\nNew_max_centralities:\n"+str(a["new_max_centralities"]))
+        print("\n\tThe country with whom, India would get maximum increase in its centrality is: "+a["link"])
+        print("\n\tNew Indian centralities:\n\t"+str(a["new_indian_centralities"]))
+        print("\n\tNew_max_centralities:\n\t"+str(a["new_max_centralities"]))
+        draw_graph_my_graph(str(relation)+"-"+a["link"])
 
+def is_india_power_center():
+    for item in a["new_max_centralities"]:
+        if str(item[0]) == 'India':
+            return True
+    return False
 
 ################################################################################################################
 ##############################               MAIN            ###################################################
@@ -107,9 +120,10 @@ a = {
     "original_max_centralities":"",
     "original_indian_centralities":"",
     "link":"",
-    "new_indian_cetralities":""
+    "new_indian_cetralities":"",
+    "new_max_centralities":""
 }
-
+india = 6
 df = pandas.read_csv("sin_dataset.csv")
 df = df.set_index("Countries")
 create_adjlist()
@@ -120,7 +134,26 @@ powers = calculate_power()
 a["original_max_centralities"] = powers
 #print("\nCurrent Powers:\n"+str(powers[0])+"\n"+str(powers[1])+"\n"+str(powers[2])+"\n")
 a["original_indian_centralities"] = (nx.betweenness_centrality(G)['India'], nx.closeness_centrality(G)['India'], nx.eigenvector_centrality(G)['India'])
+
+print("\nOriginal_max_centralities:\n"+str(a["original_max_centralities"]))
+print("\nOriginal_indian_centralities:\n"+str(a["original_indian_centralities"]))
+draw_graph_G("0-initial")
+df.to_csv("stochiomatrices/0-initial.csv")
+
 max_cen = (a["original_indian_centralities"][0]+a["original_indian_centralities"][1]+a["original_indian_centralities"][2])/3
 country = -1
-link_prediction()
-print_link()
+my_graph = nx.Graph()
+relation = 1
+while(not is_india_power_center()):
+    country = -1
+    print("\nNew Relation: "+str(relation))
+    link_prediction()
+    print_link()
+    df.iloc[india,country] = 1
+    df.iloc[country,india] = 1
+    df.to_csv("stochiomatrices/"+str(relation)+"-"+a["link"]+".csv")
+    relation +=1
+print("\n***INDIA HAS BECOME THE POWER CENTER***")
+print("Total new relations (edges) made: "+str(relation-1))
+print("The Grpahs have been printed in 'graphs' directory.")
+print("\n***THANK YOU***\n")
