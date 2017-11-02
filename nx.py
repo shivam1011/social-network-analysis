@@ -59,29 +59,56 @@ def link_prediction():
             df.iloc[col,india]=0
 
 def find_new_powers(india, col):
-    global G
+    global G,max_cen,country
     create_adjlist()
     fh=open("myfile.adjlist", 'rb')
     G=nx.read_adjlist(fh)
     fh.close()
     #draw_graph()
     powers = calculate_power()
-    print("\nPowers if India forms a link with: "+df.columns[col])
-    print(str(powers[0])+"\n"+str(powers[1])+"\n"+str(powers[2])+"\n")
-    indian_power()
+    #print("\nPowers if India forms a link with: "+df.columns[col])
+    #print(str(powers[0])+"\n"+str(powers[1])+"\n"+str(powers[2])+"\n")
+    ind_cen = indian_power()
+    avg_cen = (ind_cen[0]+ind_cen[1]+ind_cen[2])/3
+    if avg_cen > max_cen:
+        max_cen = avg_cen
+        country = col
+        a["new_max_centralities"] = powers
+        a["new_indian_centralities"] = ind_cen
 
 def indian_power():
     bet_cen = nx.betweenness_centrality(G)['India']
     clo_cen = nx.closeness_centrality(G)['India']
     eig_cen = nx.eigenvector_centrality(G)['India']
-    print("New centralities of India:")
-    print('bet_cen: '+str(bet_cen)+'\t\tchange: '+str(bet_cen-a[0]))
-    print('clo_cen: '+str(clo_cen)+'\t\tchange: '+str(clo_cen-a[1]))
-    print('eig_cen: '+str(eig_cen)+'\t\tchange: '+str(eig_cen-a[2]))
+    #print("New centralities of India:")
+    #print('bet_cen: '+str(bet_cen)+'\t\tchange: '+str(bet_cen-a[0]))
+    #print('clo_cen: '+str(clo_cen)+'\t\tchange: '+str(clo_cen-a[1]))
+    #print('eig_cen: '+str(eig_cen)+'\t\tchange: '+str(eig_cen-a[2]))
+    return (bet_cen, clo_cen, eig_cen)
+
+def print_link():
+    print("\nOriginal_max_centralities:\n"+str(a["original_max_centralities"]))
+    print("\nOriginal_indian_centralities:\n"+str(a["original_indian_centralities"]))
+
+    if country == -1:
+        print("\n
+        No such country found!")
+    else:
+        a["link"] = df.columns[country]
+        print("\nThe country with whom, India would get maximum increase in its centrality is: "+a["link"])
+        print("\nNew Indian centralities:\n"+str(a["new_indian_centralities"]))
+        print("\nNew_max_centralities:\n"+str(a["new_max_centralities"]))
+
 
 ################################################################################################################
 ##############################               MAIN            ###################################################
 ################################################################################################################
+a = {
+    "original_max_centralities":"",
+    "original_indian_centralities":"",
+    "link":"",
+    "new_indian_cetralities":""
+}
 
 df = pandas.read_csv("sin_dataset.csv")
 df = df.set_index("Countries")
@@ -90,6 +117,10 @@ fh=open("myfile.adjlist", 'rb')
 G=nx.read_adjlist(fh)
 fh.close()
 powers = calculate_power()
-print("\nCurrent Powers:\n"+str(powers[0])+"\n"+str(powers[1])+"\n"+str(powers[2])+"\n")
-a = (nx.betweenness_centrality(G)['India'], nx.closeness_centrality(G)['India'], nx.eigenvector_centrality(G)['India'])
+a["original_max_centralities"] = powers
+#print("\nCurrent Powers:\n"+str(powers[0])+"\n"+str(powers[1])+"\n"+str(powers[2])+"\n")
+a["original_indian_centralities"] = (nx.betweenness_centrality(G)['India'], nx.closeness_centrality(G)['India'], nx.eigenvector_centrality(G)['India'])
+max_cen = (a["original_indian_centralities"][0]+a["original_indian_centralities"][1]+a["original_indian_centralities"][2])/3
+country = -1
 link_prediction()
+print_link()
